@@ -7,8 +7,8 @@ pipeline {
     }
 */
     environment {
-        registry = "techlearn2024/cicd"
-        registryCredential = 'dockerhub'
+        registry = "18.234.241.164:8082/vprofile"
+        registryCredential = 'nexus-registry'
     }
 
     stages{
