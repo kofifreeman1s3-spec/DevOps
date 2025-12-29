@@ -1,49 +1,98 @@
 pipeline {
     agent any
-/*
-	tools {
+
+    tools {
         maven "maven3"
     }
-*/
+
     environment {
         registry = "18.234.241.164:8082/vprofile"
-        registryCredential = 'nexus-registry'
+        registryCredential = "nexus-registry"
     }
-    stages{
-        stage('BUILD'){
+
+    stages {
+
+        stage('FETCH CODE') {
             steps {
-                sh 'mvn clean install -DskipTests'
-            }
-            post {
-                success {
-                    echo 'Now Archiving...'
-                    archiveArtifacts artifacts: '**/target/*.war'
-                }
+                checkout scm
             }
         }
-        stage('UNIT TEST'){
+
+        stage('BUILD') {
+            steps {
+                sh 'mvn clean compile'
+            }
+        }
+
+        stage('UNIT TEST') {
             steps {
                 sh 'mvn test'
             }
         }
-        stage('INTEGRATION TEST'){
+
+        stage('PACKAGE') {
             steps {
-                sh 'mvn verify -DskipUnitTests'
-            }
-        }
-        stage ('CODE ANALYSIS WITH CHECKSTYLE'){
-            steps {
-                sh 'mvn checkstyle:checkstyle'
+                sh 'mvn package -DskipTests'
             }
             post {
                 success {
-                    echo 'Generated Analysis Result'
+                    archiveArtifacts artifacts: '**/target/*.war'
                 }
             }
         }
-        stage('CODE ANALYSIS with SONARQUBE') {
+
+        stage('CODE ANALYSIS WITH CHECKSTYLE') {
+            steps {
+                sh 'mvn checkstyle:checkstyle'
+            }
+        }
+
+        stage('CODE ANALYSIS WITH SONARQUBE') {
             environment {
                 scannerHome = tool 'mysonarscanner4'
             }
             steps {
                 withSonarQubeEnv('sonar') {
+                    sh """
+                    ${scannerHome}/bin/sonar-scanner \
+                    -Dsonar.projectKey=vprofile \
+                    -Dsonar.projectName=vprofile \
+                    -Dsonar.projectVersion=1.0
+                    """
+                }
+            }
+        }
+
+        stage('BUILD DOCKER IMAGE') {
+            steps {
+                sh 'docker build -t vprofile:latest .'
+            }
+        }
+
+        stage('PUSH IMAGE TO NEXUS') {
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: registryCredential,
+                    usernameVariable: 'NEXUS_USER',
+                    passwordVariable: 'NEXUS_PASS'
+                )]) {
+                    sh """
+                    docker login ${registry} -u ${NEXUS_USER} -p ${NEXUS_PASS}
+                    docker tag vprofile:latest ${registry}:latest
+                    docker push ${registry}:latest
+                    """
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            echo '✅ PIPELINE SUCCESSFUL — BUILD IS GREEN!'
+        }
+        failure {
+            echo '❌ PIPELINE FAILED — CHECK LOGS'
+        }
+    }
+}
+
