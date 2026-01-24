@@ -1,1 +1,1 @@
-print("Hello, DevSecOps!")
+print("Hello from DevSecOps App!")

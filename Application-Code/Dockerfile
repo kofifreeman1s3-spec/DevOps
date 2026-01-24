@@ -1,7 +1,11 @@
-# Use Python base image
+# Use Python 3.11 base image
 FROM python:3.11-slim
 
+# Set working directory
 WORKDIR /app
-COPY . /app
 
+# Copy app
+COPY app.py .
+
+# Command to run
 CMD ["python", "app.py"]
