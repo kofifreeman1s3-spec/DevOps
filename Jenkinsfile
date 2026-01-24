@@ -3,7 +3,8 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                git branch: 'main', url: 'https://github.com/kofifreeman1s3-spec/DevOps.git'
+                // Use the same branch that triggered the build
+                checkout scm
             }
         }
         stage('Build Docker Image') {
